@@ -86,6 +86,8 @@ body{background:#4d0b1c;-webkit-font-smoothing:antialiased}
 
   let appBin = get('d/a.bin');
   appBin.catch(() => {});
+  const prefetched = { 'm.bin': get('d/m.bin') };
+  prefetched['m.bin'].catch(() => {});
   let pinLen = 4;
   const boxes = $('#boxes'), pin = $('#pin'), msg = $('#msg'), go = $('#go');
   const paint = () => {
@@ -154,9 +156,12 @@ body{background:#4d0b1c;-webkit-font-smoothing:antialiased}
     const media = id => {
       if (!cache[id]) {
         const m = b.media[id];
-        cache[id] = m
-          ? get('d/' + m.f).then(buf => open(key, buf)).then(data => URL.createObjectURL(new Blob([data], { type: m.t })))
-          : Promise.reject(new Error('unknown media ' + id));
+        if (!m) return Promise.reject(new Error('unknown media ' + id));
+        const pre = prefetched[m.f];
+        delete prefetched[m.f];
+        cache[id] = (pre ? pre.catch(() => get('d/' + m.f)) : get('d/' + m.f))
+          .then(buf => open(key, buf))
+          .then(data => URL.createObjectURL(new Blob([data], { type: m.t })));
         cache[id].catch(() => { delete cache[id]; });
       }
       return cache[id];
